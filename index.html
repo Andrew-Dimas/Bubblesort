@@ -80,10 +80,8 @@
     padding: 1.25rem;
   }
 
-  /* viz card must be positioned for the overlay */
   .viz-card { position: relative; }
 
-  /* Done overlay — child of viz-card */
   #done-overlay {
     display: none;
     position: absolute;
@@ -100,7 +98,6 @@
   .done-title { font-size: 22px; font-weight: 600; color: var(--green); }
   .done-sub   { font-size: 13px; color: var(--muted); font-family: 'Space Mono', monospace; }
 
-  /* Bars */
   #canvas-container {
     width: 100%;
     height: 260px;
@@ -132,7 +129,6 @@
 
   .bar-lbl { font-family: 'Space Mono', monospace; font-size: 9px; color: var(--muted); text-align: center; height: 12px; }
 
-  /* Step message */
   #step-msg {
     background: var(--surface2);
     border: 1px solid var(--border);
@@ -150,11 +146,9 @@
   #step-msg .ok  { color: var(--green); }
   #step-msg .swp { color: var(--red); }
 
-  /* Progress */
   .progress-wrap { height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; margin-bottom: 1rem; }
   #progress-bar  { height: 100%; background: var(--accent); border-radius: 2px; width: 0%; transition: width 0.15s; }
 
-  /* Controls */
   .controls { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
   .btn {
     display: inline-flex;
@@ -178,6 +172,37 @@
   .btn.primary:hover { background: #6db2ff; border-color: #6db2ff; }
   .btn.danger  { background: transparent; border-color: var(--red); color: var(--red); }
   .btn.danger:hover { background: rgba(248,113,113,0.1); }
+
+  /* ── Direction Toggle ── */
+  .dir-toggle {
+    display: inline-flex;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--surface2);
+    flex-shrink: 0;
+  }
+  .dir-btn {
+    padding: 0.45rem 0.8rem;
+    font-size: 12px;
+    font-family: 'Space Mono', monospace;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    transition: background 0.15s, color 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    user-select: none;
+  }
+  .dir-btn:hover { color: var(--text); }
+  .dir-btn.active {
+    background: rgba(79,158,255,0.15);
+    color: var(--accent);
+    font-weight: 700;
+  }
+  .dir-divider { width: 1px; background: var(--border); flex-shrink: 0; }
 
   .speed-group { display: flex; align-items: center; gap: 8px; margin-left: auto; }
   .speed-group label { font-size: 12px; color: var(--muted); }
@@ -229,7 +254,6 @@
   .array-input:focus { border-color: var(--accent); }
   .array-input::placeholder { color: var(--muted); }
 
-  /* Sidebar */
   .sidebar { display: flex; flex-direction: column; gap: 1.25rem; }
   .section-title {
     font-size: 10px;
@@ -263,6 +287,21 @@
   .pc-fn  { color: #60a5fa; }
   .pc-num { color: var(--amber); }
   .pc-cm  { color: #3d4d6a; }
+
+  /* dir badge in done overlay */
+  .dir-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: rgba(79,158,255,0.12);
+    border: 1px solid rgba(79,158,255,0.3);
+    border-radius: 20px;
+    padding: 3px 12px;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--accent);
+    margin-top: 2px;
+  }
 </style>
 </head>
 <body>
@@ -276,12 +315,11 @@
 
   <div class="main-grid">
 
-    <!-- Visualization -->
     <div class="card viz-card">
 
-      <!-- overlay INSIDE viz-card so position:absolute refers to it -->
       <div id="done-overlay">
         <div class="done-title">&#10003; Array Terurut!</div>
+        <div id="done-dir-pill" class="dir-pill"></div>
         <div class="done-sub" id="done-stats"></div>
         <button class="btn primary" onclick="resetAll()" style="margin-top:8px;">&#8635; Ulangi</button>
       </div>
@@ -296,6 +334,14 @@
         <button class="btn primary" id="btn-play" onclick="togglePlay()">&#9654; Play</button>
         <button class="btn" onclick="stepOnce()">&#9197; Step</button>
         <button class="btn danger" onclick="resetAll()">&#8635; Reset</button>
+
+        <!-- Direction Toggle -->
+        <div class="dir-toggle" title="Arah pengurutan">
+          <button class="dir-btn active" id="dir-asc" onclick="setDirection('asc')">&#8593; ASC</button>
+          <div class="dir-divider"></div>
+          <button class="dir-btn" id="dir-desc" onclick="setDirection('desc')">&#8595; DESC</button>
+        </div>
+
         <div class="speed-group">
           <label>Kecepatan</label>
           <input type="range" id="speed" min="1" max="10" value="5" step="1" oninput="onSpeedChange()">
@@ -346,12 +392,8 @@
 
       <div class="card">
         <div class="section-title">Pseudocode</div>
-        <div class="pseudo">
-          <span class="pc-line" id="pc0"><span class="pc-kw">for</span> i = <span class="pc-num">0</span> <span class="pc-kw">to</span> n-1:</span>
-          <span class="pc-line" id="pc1">&nbsp;&nbsp;<span class="pc-kw">for</span> j = <span class="pc-num">0</span> <span class="pc-kw">to</span> n-i-2:</span>
-          <span class="pc-line" id="pc2">&nbsp;&nbsp;&nbsp;&nbsp;<span class="pc-kw">if</span> arr[j] &gt; arr[j+<span class="pc-num">1</span>]:</span>
-          <span class="pc-line" id="pc3">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="pc-fn">swap</span>(arr[j], arr[j+<span class="pc-num">1</span>])</span>
-          <span class="pc-line" id="pc4"><span class="pc-cm">// selesai</span></span>
+        <div class="pseudo" id="pseudocode-block">
+          <!-- rendered by JS based on direction -->
         </div>
       </div>
 
@@ -360,55 +402,89 @@
 </div>
 
 <script>
-var arr     = [];
-var steps   = [];
-var stepIdx = 0;
-var playing = false;
-var timerId = null;
+var arr       = [];
+var steps     = [];
+var stepIdx   = 0;
+var playing   = false;
+var timerId   = null;
+var direction = 'asc'; // 'asc' | 'desc'
 
-/* ── Build all animation steps pre-emptively ── */
-function buildSteps(input) {
+/* ── Direction toggle ── */
+function setDirection(dir) {
+  direction = dir;
+  document.getElementById('dir-asc').classList.toggle('active',  dir === 'asc');
+  document.getElementById('dir-desc').classList.toggle('active', dir === 'desc');
+  renderPseudocode();
+  init();
+}
+
+function renderPseudocode() {
+  var op   = direction === 'asc' ? '&gt;' : '&lt;';
+  var desc = direction === 'asc'
+    ? '<span class="pc-cm">// kecil ke besar</span>'
+    : '<span class="pc-cm">// besar ke kecil</span>';
+  document.getElementById('pseudocode-block').innerHTML =
+    '<span class="pc-line" id="pc0"><span class="pc-kw">for</span> i = <span class="pc-num">0</span> <span class="pc-kw">to</span> n-1:</span>' +
+    '<span class="pc-line" id="pc1">&nbsp;&nbsp;<span class="pc-kw">for</span> j = <span class="pc-num">0</span> <span class="pc-kw">to</span> n-i-2:</span>' +
+    '<span class="pc-line" id="pc2">&nbsp;&nbsp;&nbsp;&nbsp;<span class="pc-kw">if</span> arr[j] ' + op + ' arr[j+<span class="pc-num">1</span>]:</span>' +
+    '<span class="pc-line" id="pc3">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="pc-fn">swap</span>(arr[j], arr[j+<span class="pc-num">1</span>]) ' + desc + '</span>' +
+    '<span class="pc-line" id="pc4"><span class="pc-cm">// selesai</span></span>';
+}
+
+/* ── Build all animation steps ── */
+function buildSteps(input, dir) {
   var result = [];
-  var A = input.slice();   // working copy
+  var A = input.slice();
   var n = A.length;
   var cmps = 0, swps = 0;
   var lastPass = 0;
+  var dirLabel = dir === 'asc' ? 'Ascending &#8593;' : 'Descending &#8595;';
+
+  function shouldSwap(a, b) {
+    return dir === 'asc' ? a > b : a < b;
+  }
+  function cmpSymbol() {
+    return dir === 'asc' ? '&gt;' : '&lt;';
+  }
+  function noSwapSymbol() {
+    return dir === 'asc' ? '&le;' : '&ge;';
+  }
 
   function snap(pc, cmpIdx, swpIdx, sortedFrom, msg, done) {
     result.push({
-      arr:         A.slice(),
-      pc:          pc,
-      cmpIdx:      cmpIdx,
-      swpIdx:      swpIdx,
-      sortedFrom:  sortedFrom,
-      msg:         msg,
-      cmps:        cmps,
-      swps:        swps,
-      pass:        lastPass,
-      done:        done || false
+      arr:        A.slice(),
+      pc:         pc,
+      cmpIdx:     cmpIdx,
+      swpIdx:     swpIdx,
+      sortedFrom: sortedFrom,
+      msg:        msg,
+      cmps:       cmps,
+      swps:       swps,
+      pass:       lastPass,
+      done:       done || false
     });
   }
 
-  snap(-1, [], [], n, 'Mulai Bubble Sort. Array belum terurut.', false);
+  snap(-1, [], [], n, 'Mulai Bubble Sort <span class="hi">(' + dirLabel + ')</span>. Array belum terurut.', false);
 
   for (var i = 0; i < n - 1; i++) {
     lastPass = i + 1;
     snap(0, [], [], n - i,
-      '<span class="hi">Pass ke-' + (i+1) + '</span> dimulai.', false);
+      '<span class="hi">Pass ke-' + (i+1) + '</span> dimulai <span class="kw">(' + dirLabel + ')</span>.', false);
 
     var swapped = false;
 
     for (var j = 0; j < n - i - 1; j++) {
       cmps++;
       snap(2, [j, j+1], [], n - i,
-        'Bandingkan arr[' + j + '] <span class="kw">(' + A[j] + ')</span> dan arr[' + (j+1) + '] <span class="kw">(' + A[j+1] + ')</span>',
+        'Bandingkan arr[' + j + '] <span class="kw">(' + A[j] + ')</span> ' + cmpSymbol() + ' arr[' + (j+1) + '] <span class="kw">(' + A[j+1] + ')</span>?',
         false);
 
-      if (A[j] > A[j+1]) {
+      if (shouldSwap(A[j], A[j+1])) {
         swps++;
         swapped = true;
         snap(3, [], [j, j+1], n - i,
-          '<span class="swp">Tukar</span> ' + A[j] + ' &#8596; ' + A[j+1] + ' (kiri lebih besar)',
+          '<span class="swp">Tukar</span> ' + A[j] + ' &#8596; ' + A[j+1],
           false);
 
         var tmp = A[j]; A[j] = A[j+1]; A[j+1] = tmp;
@@ -418,7 +494,7 @@ function buildSteps(input) {
           false);
       } else {
         snap(2, [], [], n - i,
-          'Tidak perlu tukar: ' + A[j] + ' &le; ' + A[j+1] + ' &#10003;',
+          'Tidak perlu tukar: ' + A[j] + ' ' + noSwapSymbol() + ' ' + A[j+1] + ' &#10003;',
           false);
       }
     }
@@ -435,9 +511,8 @@ function buildSteps(input) {
     }
   }
 
-  // Final done frame — all sorted
   snap(4, [], [], 0,
-    '<span class="ok">&#10003; Selesai!</span> Array terurut dalam <span class="hi">' + lastPass + '</span> pass.',
+    '<span class="ok">&#10003; Selesai!</span> Array terurut <span class="hi">(' + dirLabel + ')</span> dalam <span class="hi">' + lastPass + '</span> pass.',
     true);
 
   return result;
@@ -450,7 +525,6 @@ function renderStep(idx) {
   var maxV = 0;
   for (var k = 0; k < n; k++) if (s.arr[k] > maxV) maxV = s.arr[k];
 
-  // Bars
   var container = document.getElementById('canvas-container');
   container.innerHTML = '';
 
@@ -480,16 +554,13 @@ function renderStep(idx) {
     container.appendChild(wrap);
   }
 
-  // Message
   document.getElementById('step-msg').innerHTML = s.msg;
 
-  // Stats
   document.getElementById('stat-cmp').textContent    = s.cmps;
   document.getElementById('stat-swp').textContent    = s.swps;
   document.getElementById('stat-pass').textContent   = s.pass;
   document.getElementById('stat-sorted').textContent = n - s.sortedFrom;
 
-  // Pseudocode highlight
   for (var p = 0; p < 5; p++) {
     var el = document.getElementById('pc' + p);
     if (el) {
@@ -498,14 +569,14 @@ function renderStep(idx) {
     }
   }
 
-  // Progress bar
   var pct = steps.length > 1 ? (idx / (steps.length - 1)) * 100 : 0;
   document.getElementById('progress-bar').style.width = pct + '%';
 
-  // Done overlay
   if (s.done) {
     document.getElementById('done-stats').textContent =
-      s.cmps + ' perbandingan \u00b7 ' + s.swps + ' pertukaran \u00b7 ' + s.pass + ' pass';
+      s.cmps + ' perbandingan · ' + s.swps + ' pertukaran · ' + s.pass + ' pass';
+    document.getElementById('done-dir-pill').innerHTML =
+      (direction === 'asc' ? '↑ Ascending' : '↓ Descending');
     setTimeout(function() {
       document.getElementById('done-overlay').classList.add('show');
     }, 350);
@@ -517,7 +588,7 @@ function renderStep(idx) {
 /* ── Init ── */
 function init() {
   stopPlaying();
-  steps   = buildSteps(arr);
+  steps   = buildSteps(arr, direction);
   stepIdx = 0;
   document.getElementById('done-overlay').classList.remove('show');
   document.getElementById('progress-bar').style.width = '0%';
@@ -611,15 +682,17 @@ function stopPlaying() {
   clearTimeout(timerId);
 }
 
-/* ── Keyboard ── */
 document.addEventListener('keydown', function(e) {
   if (e.code === 'Space')      { e.preventDefault(); togglePlay(); }
   if (e.code === 'ArrowRight') { e.preventDefault(); stepOnce();   }
   if (e.code === 'KeyR')       { resetAll(); }
+  if (e.code === 'KeyA')       { setDirection('asc'); }
+  if (e.code === 'KeyD')       { setDirection('desc'); }
 });
 
 /* ── Bootstrap ── */
 (function() {
+  renderPseudocode();
   for (var k = 0; k < 14; k++) arr.push(Math.floor(Math.random() * 90) + 10);
   init();
 }());
