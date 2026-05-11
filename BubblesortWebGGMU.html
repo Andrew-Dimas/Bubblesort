@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bubble Sort — Visualisasi Interaktif</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0f14;
+    --surface: #161923;
+    --surface2: #1e2330;
+    --border: #2a3045;
+    --text: #e8ecf4;
+    --muted: #6b7a99;
+    --accent: #4f9eff;
+    --green: #34d399;
+    --amber: #fbbf24;
+    --red: #f87171;
+    --pink: #f472b6;
+    --bar-default: #3a4560;
+    --bar-compare: #fbbf24;
+    --bar-swap: #f87171;
+    --bar-sorted: #34d399;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(79,158,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(79,158,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .wrapper {
+    position: relative;
+    z-index: 1;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem 4rem;
+  }
+
+  header { text-align: center; margin-bottom: 2.5rem; }
+  .label {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 0.5rem;
+  }
+  h1 { font-size: clamp(2rem, 5vw, 3.2rem); font-weight: 600; letter-spacing: -0.02em; line-height: 1.1; }
+  h1 span { color: var(--accent); }
+  header p { margin-top: 0.75rem; color: var(--muted); font-size: 15px; max-width: 480px; margin-left: auto; margin-right: auto; line-height: 1.6; }
+
+  .main-grid {
+    display: grid;
+    grid-template-columns: 1fr 280px;
+    gap: 1.25rem;
+    align-items: start;
+  }
+  @media (max-width: 820px) { .main-grid { grid-template-columns: 1fr; } }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1.25rem;
+  }
+
+  /* viz card must be positioned for the overlay */
+  .viz-card { position: relative; }
+
+  /* Done overlay — child of viz-card */
+  #done-overlay {
+    display: none;
+    position: absolute;
+    inset: 0;
+    border-radius: 16px;
+    background: rgba(13,15,20,0.9);
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    z-index: 20;
+  }
+  #done-overlay.show { display: flex; }
+  .done-title { font-size: 22px; font-weight: 600; color: var(--green); }
+  .done-sub   { font-size: 13px; color: var(--muted); font-family: 'Space Mono', monospace; }
+
+  /* Bars */
+  #canvas-container {
+    width: 100%;
+    height: 260px;
+    display: flex;
+    align-items: flex-end;
+    gap: 3px;
+    padding-top: 0.5rem;
+    margin-bottom: 1rem;
+  }
+  .bar-wrap {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    height: 100%;
+    justify-content: flex-end;
+    gap: 3px;
+  }
+  .bar {
+    width: 100%;
+    border-radius: 4px 4px 0 0;
+    min-height: 4px;
+    transition: height 0.15s ease, background-color 0.12s ease;
+  }
+  .bar.st-default  { background-color: var(--bar-default); }
+  .bar.st-compare  { background-color: var(--bar-compare); }
+  .bar.st-swapping { background-color: var(--bar-swap); }
+  .bar.st-sorted   { background-color: var(--bar-sorted); }
+
+  .bar-lbl { font-family: 'Space Mono', monospace; font-size: 9px; color: var(--muted); text-align: center; height: 12px; }
+
+  /* Step message */
+  #step-msg {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 0.65rem 1rem;
+    font-size: 13px;
+    color: var(--muted);
+    min-height: 42px;
+    line-height: 1.5;
+    margin-bottom: 1rem;
+    font-family: 'Space Mono', monospace;
+  }
+  #step-msg .hi  { color: var(--accent); font-weight: 700; }
+  #step-msg .kw  { color: var(--amber); }
+  #step-msg .ok  { color: var(--green); }
+  #step-msg .swp { color: var(--red); }
+
+  /* Progress */
+  .progress-wrap { height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; margin-bottom: 1rem; }
+  #progress-bar  { height: 100%; background: var(--accent); border-radius: 2px; width: 0%; transition: width 0.15s; }
+
+  /* Controls */
+  .controls { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 0.45rem 0.9rem;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text);
+    font-size: 13px;
+    font-family: 'DM Sans', sans-serif;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, transform 0.1s;
+    user-select: none;
+    white-space: nowrap;
+  }
+  .btn:hover  { background: var(--surface); border-color: var(--accent); }
+  .btn:active { transform: scale(0.97); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #0d0f14; font-weight: 600; }
+  .btn.primary:hover { background: #6db2ff; border-color: #6db2ff; }
+  .btn.danger  { background: transparent; border-color: var(--red); color: var(--red); }
+  .btn.danger:hover { background: rgba(248,113,113,0.1); }
+
+  .speed-group { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+  .speed-group label { font-size: 12px; color: var(--muted); }
+
+  input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 90px;
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+    border: none;
+  }
+
+  .size-row { display: flex; align-items: center; gap: 10px; margin-top: 0.75rem; }
+  .size-row label { font-size: 12px; color: var(--muted); }
+  .size-row input  { width: 130px; }
+  .size-val { font-size: 12px; color: var(--accent); font-family: 'Space Mono', monospace; min-width: 20px; }
+
+  .input-row { display: flex; gap: 8px; margin-top: 0.75rem; flex-wrap: wrap; }
+  .array-input {
+    flex: 1;
+    min-width: 150px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.45rem 0.75rem;
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    outline: none;
+  }
+  .array-input:focus { border-color: var(--accent); }
+  .array-input::placeholder { color: var(--muted); }
+
+  /* Sidebar */
+  .sidebar { display: flex; flex-direction: column; gap: 1.25rem; }
+  .section-title {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 0.75rem;
+  }
+
+  .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 1rem; }
+  .stat { background: var(--surface2); border-radius: 10px; padding: 0.6rem 0.7rem; border: 1px solid var(--border); }
+  .stat-label { font-size: 10px; color: var(--muted); letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 4px; }
+  .stat-val { font-family: 'Space Mono', monospace; font-size: 20px; font-weight: 700; color: var(--accent); }
+  .stat-val.amber { color: var(--amber); }
+  .stat-val.green { color: var(--green); }
+  .stat-val.pink  { color: var(--pink); }
+
+  .complexity-row { display: flex; gap: 8px; }
+  .badge { background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 4px 10px; font-family: 'Space Mono', monospace; font-size: 11px; color: var(--muted); }
+  .badge strong { color: var(--amber); }
+
+  .legend { display: flex; flex-direction: column; gap: 7px; }
+  .legend-item { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
+  .dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+
+  .pseudo { font-family: 'Space Mono', monospace; font-size: 11.5px; line-height: 2.1; color: var(--muted); }
+  .pc-line { display: block; padding: 0 8px; border-radius: 4px; transition: background 0.12s, color 0.12s; white-space: nowrap; }
+  .pc-line.active { background: rgba(79,158,255,0.12); color: var(--text); }
+  .pc-kw  { color: #a78bfa; }
+  .pc-fn  { color: #60a5fa; }
+  .pc-num { color: var(--amber); }
+  .pc-cm  { color: #3d4d6a; }
+</style>
+</head>
+<body>
+<div class="wrapper">
+
+  <header>
+    <div class="label">Algoritma Pengurutan</div>
+    <h1>Bubble <span>Sort</span></h1>
+    <p>Visualisasi langkah-demi-langkah cara kerja Bubble Sort secara interaktif.</p>
+  </header>
+
+  <div class="main-grid">
+
+    <!-- Visualization -->
+    <div class="card viz-card">
+
+      <!-- overlay INSIDE viz-card so position:absolute refers to it -->
+      <div id="done-overlay">
+        <div class="done-title">&#10003; Array Terurut!</div>
+        <div class="done-sub" id="done-stats"></div>
+        <button class="btn primary" onclick="resetAll()" style="margin-top:8px;">&#8635; Ulangi</button>
+      </div>
+
+      <div id="canvas-container"></div>
+
+      <div id="step-msg">Tekan <span class="hi">Play</span> untuk memulai, atau <span class="hi">Step</span> untuk langkah per langkah.</div>
+
+      <div class="progress-wrap"><div id="progress-bar"></div></div>
+
+      <div class="controls">
+        <button class="btn primary" id="btn-play" onclick="togglePlay()">&#9654; Play</button>
+        <button class="btn" onclick="stepOnce()">&#9197; Step</button>
+        <button class="btn danger" onclick="resetAll()">&#8635; Reset</button>
+        <div class="speed-group">
+          <label>Kecepatan</label>
+          <input type="range" id="speed" min="1" max="10" value="5" step="1" oninput="onSpeedChange()">
+          <span id="speed-lbl" style="font-size:12px;color:var(--accent);font-family:'Space Mono',monospace;min-width:18px;">5</span>
+        </div>
+      </div>
+
+      <div class="size-row">
+        <label>Ukuran array:</label>
+        <input type="range" id="arr-size" min="5" max="30" value="14" step="1" oninput="onSizeChange()">
+        <span class="size-val" id="size-lbl">14</span>
+      </div>
+
+      <div class="input-row">
+        <input class="array-input" id="custom-input" placeholder="Contoh: 5,3,8,1,9,2" />
+        <button class="btn" onclick="applyCustom()">Terapkan</button>
+        <button class="btn" onclick="randomize()">&#127922; Acak</button>
+      </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+
+      <div class="card">
+        <div class="section-title">Statistik</div>
+        <div class="stats-grid">
+          <div class="stat"><div class="stat-label">Perbandingan</div><div class="stat-val" id="stat-cmp">0</div></div>
+          <div class="stat"><div class="stat-label">Pertukaran</div><div class="stat-val amber" id="stat-swp">0</div></div>
+          <div class="stat"><div class="stat-label">Pass</div><div class="stat-val green" id="stat-pass">0</div></div>
+          <div class="stat"><div class="stat-label">Sudah Urut</div><div class="stat-val pink" id="stat-sorted">0</div></div>
+        </div>
+        <div class="section-title">Kompleksitas</div>
+        <div class="complexity-row">
+          <div class="badge">Waktu: <strong>O(n&#178;)</strong></div>
+          <div class="badge">Ruang: <strong>O(1)</strong></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="section-title">Legenda Warna</div>
+        <div class="legend">
+          <div class="legend-item"><div class="dot" style="background:var(--bar-default)"></div>Elemen normal</div>
+          <div class="legend-item"><div class="dot" style="background:var(--bar-compare)"></div>Sedang dibandingkan</div>
+          <div class="legend-item"><div class="dot" style="background:var(--bar-swap)"></div>Sedang ditukar</div>
+          <div class="legend-item"><div class="dot" style="background:var(--bar-sorted)"></div>Sudah terurut</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="section-title">Pseudocode</div>
+        <div class="pseudo">
+          <span class="pc-line" id="pc0"><span class="pc-kw">for</span> i = <span class="pc-num">0</span> <span class="pc-kw">to</span> n-1:</span>
+          <span class="pc-line" id="pc1">&nbsp;&nbsp;<span class="pc-kw">for</span> j = <span class="pc-num">0</span> <span class="pc-kw">to</span> n-i-2:</span>
+          <span class="pc-line" id="pc2">&nbsp;&nbsp;&nbsp;&nbsp;<span class="pc-kw">if</span> arr[j] &gt; arr[j+<span class="pc-num">1</span>]:</span>
+          <span class="pc-line" id="pc3">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="pc-fn">swap</span>(arr[j], arr[j+<span class="pc-num">1</span>])</span>
+          <span class="pc-line" id="pc4"><span class="pc-cm">// selesai</span></span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+var arr     = [];
+var steps   = [];
+var stepIdx = 0;
+var playing = false;
+var timerId = null;
+
+/* ── Build all animation steps pre-emptively ── */
+function buildSteps(input) {
+  var result = [];
+  var A = input.slice();   // working copy
+  var n = A.length;
+  var cmps = 0, swps = 0;
+  var lastPass = 0;
+
+  function snap(pc, cmpIdx, swpIdx, sortedFrom, msg, done) {
+    result.push({
+      arr:         A.slice(),
+      pc:          pc,
+      cmpIdx:      cmpIdx,
+      swpIdx:      swpIdx,
+      sortedFrom:  sortedFrom,
+      msg:         msg,
+      cmps:        cmps,
+      swps:        swps,
+      pass:        lastPass,
+      done:        done || false
+    });
+  }
+
+  snap(-1, [], [], n, 'Mulai Bubble Sort. Array belum terurut.', false);
+
+  for (var i = 0; i < n - 1; i++) {
+    lastPass = i + 1;
+    snap(0, [], [], n - i,
+      '<span class="hi">Pass ke-' + (i+1) + '</span> dimulai.', false);
+
+    var swapped = false;
+
+    for (var j = 0; j < n - i - 1; j++) {
+      cmps++;
+      snap(2, [j, j+1], [], n - i,
+        'Bandingkan arr[' + j + '] <span class="kw">(' + A[j] + ')</span> dan arr[' + (j+1) + '] <span class="kw">(' + A[j+1] + ')</span>',
+        false);
+
+      if (A[j] > A[j+1]) {
+        swps++;
+        swapped = true;
+        snap(3, [], [j, j+1], n - i,
+          '<span class="swp">Tukar</span> ' + A[j] + ' &#8596; ' + A[j+1] + ' (kiri lebih besar)',
+          false);
+
+        var tmp = A[j]; A[j] = A[j+1]; A[j+1] = tmp;
+
+        snap(3, [], [j, j+1], n - i,
+          'Setelah tukar: arr[' + j + ']=<span class="ok">' + A[j] + '</span>, arr[' + (j+1) + ']=<span class="ok">' + A[j+1] + '</span>',
+          false);
+      } else {
+        snap(2, [], [], n - i,
+          'Tidak perlu tukar: ' + A[j] + ' &le; ' + A[j+1] + ' &#10003;',
+          false);
+      }
+    }
+
+    snap(1, [], [], n - i - 1,
+      'Pass ' + (i+1) + ' selesai. <span class="ok">' + A[n-i-1] + '</span> sudah di posisi akhir.',
+      false);
+
+    if (!swapped) {
+      snap(4, [], [], 0,
+        '<span class="ok">Early exit!</span> Tidak ada pertukaran &mdash; array sudah terurut.',
+        false);
+      break;
+    }
+  }
+
+  // Final done frame — all sorted
+  snap(4, [], [], 0,
+    '<span class="ok">&#10003; Selesai!</span> Array terurut dalam <span class="hi">' + lastPass + '</span> pass.',
+    true);
+
+  return result;
+}
+
+/* ── Render one frame ── */
+function renderStep(idx) {
+  var s   = steps[idx];
+  var n   = s.arr.length;
+  var maxV = 0;
+  for (var k = 0; k < n; k++) if (s.arr[k] > maxV) maxV = s.arr[k];
+
+  // Bars
+  var container = document.getElementById('canvas-container');
+  container.innerHTML = '';
+
+  for (var i = 0; i < n; i++) {
+    var v    = s.arr[i];
+    var wrap = document.createElement('div');
+    wrap.className = 'bar-wrap';
+
+    var bar  = document.createElement('div');
+    bar.className = 'bar';
+    var hPct = (v / maxV) * 100;
+    bar.style.height = 'calc(' + hPct + '% - 16px)';
+
+    var cls = 'st-default';
+    if (i >= s.sortedFrom)             cls = 'st-sorted';
+    if (s.cmpIdx.indexOf(i) !== -1)    cls = 'st-compare';
+    if (s.swpIdx.indexOf(i) !== -1)    cls = 'st-swapping';
+    if (s.done)                        cls = 'st-sorted';
+    bar.classList.add(cls);
+
+    var lbl = document.createElement('div');
+    lbl.className   = 'bar-lbl';
+    lbl.textContent = n <= 20 ? v : '';
+
+    wrap.appendChild(bar);
+    wrap.appendChild(lbl);
+    container.appendChild(wrap);
+  }
+
+  // Message
+  document.getElementById('step-msg').innerHTML = s.msg;
+
+  // Stats
+  document.getElementById('stat-cmp').textContent    = s.cmps;
+  document.getElementById('stat-swp').textContent    = s.swps;
+  document.getElementById('stat-pass').textContent   = s.pass;
+  document.getElementById('stat-sorted').textContent = n - s.sortedFrom;
+
+  // Pseudocode highlight
+  for (var p = 0; p < 5; p++) {
+    var el = document.getElementById('pc' + p);
+    if (el) {
+      if (s.pc === p) el.classList.add('active');
+      else            el.classList.remove('active');
+    }
+  }
+
+  // Progress bar
+  var pct = steps.length > 1 ? (idx / (steps.length - 1)) * 100 : 0;
+  document.getElementById('progress-bar').style.width = pct + '%';
+
+  // Done overlay
+  if (s.done) {
+    document.getElementById('done-stats').textContent =
+      s.cmps + ' perbandingan \u00b7 ' + s.swps + ' pertukaran \u00b7 ' + s.pass + ' pass';
+    setTimeout(function() {
+      document.getElementById('done-overlay').classList.add('show');
+    }, 350);
+    stopPlaying();
+    document.getElementById('btn-play').textContent = '\u25B6 Play';
+  }
+}
+
+/* ── Init ── */
+function init() {
+  stopPlaying();
+  steps   = buildSteps(arr);
+  stepIdx = 0;
+  document.getElementById('done-overlay').classList.remove('show');
+  document.getElementById('progress-bar').style.width = '0%';
+  document.getElementById('btn-play').textContent = '\u25B6 Play';
+  renderStep(0);
+}
+
+function resetAll() {
+  stopPlaying();
+  stepIdx = 0;
+  document.getElementById('done-overlay').classList.remove('show');
+  document.getElementById('progress-bar').style.width = '0%';
+  document.getElementById('btn-play').textContent = '\u25B6 Play';
+  renderStep(0);
+}
+
+function randomize() {
+  var n = parseInt(document.getElementById('arr-size').value, 10);
+  arr = [];
+  for (var k = 0; k < n; k++) arr.push(Math.floor(Math.random() * 90) + 10);
+  document.getElementById('custom-input').value = '';
+  init();
+}
+
+function onSizeChange() {
+  var n = parseInt(document.getElementById('arr-size').value, 10);
+  document.getElementById('size-lbl').textContent = n;
+  arr = [];
+  for (var k = 0; k < n; k++) arr.push(Math.floor(Math.random() * 90) + 10);
+  init();
+}
+
+function applyCustom() {
+  var raw    = document.getElementById('custom-input').value;
+  var parsed = raw.split(',')
+    .map(function(s) { return parseInt(s.trim(), 10); })
+    .filter(function(n) { return !isNaN(n) && n > 0; });
+  if (parsed.length < 2) { alert('Masukkan minimal 2 angka positif, dipisah koma!'); return; }
+  arr = parsed.slice(0, 30);
+  document.getElementById('arr-size').value       = arr.length;
+  document.getElementById('size-lbl').textContent = arr.length;
+  init();
+}
+
+/* ── Playback ── */
+function getDelay() {
+  return Math.round(800 / parseInt(document.getElementById('speed').value, 10));
+}
+
+function onSpeedChange() {
+  document.getElementById('speed-lbl').textContent =
+    document.getElementById('speed').value;
+  if (playing) { clearTimeout(timerId); scheduleNext(); }
+}
+
+function stepOnce() {
+  if (stepIdx < steps.length - 1) {
+    stepIdx++;
+    renderStep(stepIdx);
+  }
+}
+
+function togglePlay() {
+  if (playing) {
+    stopPlaying();
+    document.getElementById('btn-play').textContent = '\u25B6 Play';
+  } else {
+    if (stepIdx >= steps.length - 1) resetAll();
+    playing = true;
+    document.getElementById('btn-play').textContent = '\u23F8 Pause';
+    scheduleNext();
+  }
+}
+
+function scheduleNext() {
+  timerId = setTimeout(function() {
+    if (!playing) return;
+    if (stepIdx < steps.length - 1) {
+      stepIdx++;
+      renderStep(stepIdx);
+      scheduleNext();
+    } else {
+      stopPlaying();
+      document.getElementById('btn-play').textContent = '\u25B6 Play';
+    }
+  }, getDelay());
+}
+
+function stopPlaying() {
+  playing = false;
+  clearTimeout(timerId);
+}
+
+/* ── Keyboard ── */
+document.addEventListener('keydown', function(e) {
+  if (e.code === 'Space')      { e.preventDefault(); togglePlay(); }
+  if (e.code === 'ArrowRight') { e.preventDefault(); stepOnce();   }
+  if (e.code === 'KeyR')       { resetAll(); }
+});
+
+/* ── Bootstrap ── */
+(function() {
+  for (var k = 0; k < 14; k++) arr.push(Math.floor(Math.random() * 90) + 10);
+  init();
+}());
+</script>
+</body>
+</html>
